@@ -62,11 +62,33 @@
 			        this.width = width;
 			        this.height = height;
 			        this.color = color;
+			        this.type = "rect";
 			    },
 
 			    draw() {
 			        this.ctx.fillStyle = this.color;
 			        this.ctx.fillRect(this.x, this.y, this.width, this.height);
+			    }
+			};
+
+			let circle = {
+			    init(cv, x, y, radius, Start, End, sandt, color) {
+			        this.ctx = cv.context;
+			        this.x = x;
+			        this.y = y;
+			        this.radius = radius;
+			        this.Start = Start;
+			        this.End = End;
+			        this.sandt = sandt;
+			        this.color = color;
+			        this.type = "circ";
+			    },
+
+			    draw() {
+			    	this.ctx.beginPath();
+			        this.ctx.fillStyle = this.color;
+			        this.ctx.arc(this.x, this.y, this.radius, this.Start, this.End, this.sandt);
+			        this.ctx.fill();
 			    }
 			};
 
@@ -85,19 +107,14 @@
 			    shape3.init(mycv, 180, 10, 50, 100, 'orange');
 			    var shape4 = Object.create(Shape);
 			    shape4.init(mycv, 10, 120, 280, 75, 'red');
+			    var shape5 = Object.create(circle);
+			    shape5.init(mycv, 150, 250, 25, 0, Math.PI, true, 'orange');	
 			    shapes.push(shape1);
 			    shapes.push(shape2);
 			    shapes.push(shape3);
 			    shapes.push(shape4);
+			    shapes.push(shape5);
 			    repeater(mycv, shapes);
-			    let circle = $('toolBox');
-			    if (circle.getContext) {
-			        var ctx = circle.getContext('2d');
-			        ctx.beginPath();
-			        ctx.arc(150, 250, 25, 0, Math.PI, true);
-			        ctx.fillStyle = 'pink';
-			        ctx.fill();
-			    }
 			}
 
 			let redraw = function (cv, arr) {
@@ -116,11 +133,78 @@
 			    redraw(cv, arr);
 			}
 
+			function isOverlapping(obj) {
+				if (!isOverlappingX(obj) || !isOverlappingY(obj)) {
+					othershapes.push(obj);
+					return false
+				} else {
+					return true
+				}
+			}
+
+			function isOverlappingY(obj) {
+				if (obj.y + obj.height > room.height) {
+					var distance = obj.y + obj.height;
+					var push = distance - room.height;
+					obj.y = obj.y - push;
+				}
+				if (othershapes.length === 0) {
+					return false;
+				} else {
+					for (i = 0; i < othershapes.length; i++) {
+						if (obj.type === "rect") {
+							let yOver = obj.y + obj.height;
+							if (!(yOver < othershapes[i].y || othershapes[i].y + othershapes[i].height < obj.y)) {
+								console.log("overlapper på y");
+								return true;
+							} else {
+								console.log("overlapper ikke på y");
+							}
+						} else {
+							console.log(obj.type)
+						}
+					} 
+					return false;
+				}
+			
+			}
+
+			function isOverlappingX(obj) {
+				if (obj.x + obj.width > room.width) {
+					var distance = obj.x + obj.width;
+					var push = distance - room.width;
+					obj.x = obj.x - push;
+				}
+				if (othershapes.length === 0) {
+					return false;
+				} else {
+					for (i = 0; i < othershapes.length; i++) {
+						if (obj.type === "rect") {
+							let xOver = obj.x + obj.width;
+							if (!(xOver < othershapes[i].x || othershapes[i].x + othershapes[i].width < obj.x)) {
+								console.log("overlapper på x");
+								return true;
+							} else {
+								console.log("overlapper ikke på x");
+							}
+						} else {
+							console.log(obj.type)
+						}
+					} 
+					return false;
+				}
+			
+			}
+
 			let hittest = function (ev) {
 			    for (let i = 0; i < shapes.length; i++) {
 			        let cx = shapes[i].ctx;
 			        cx.beginPath();
-			        cx.rect(shapes[i].x, shapes[i].y, shapes[i].width, shapes[i].height);
+			        if (shapes[i].type === "rect") {
+			        	cx.rect(shapes[i].x, shapes[i].y, shapes[i].width, shapes[i].height);
+			        } else {
+			        	cx.arc(shapes[i].x, shapes[i].y, shapes[i].radius, shapes[i].Start, shapes[i].End, shapes[i].sandt);
+			        }
 			        cx.closePath();
 			        let bb = this.getBoundingClientRect();    // get canvas as std obj
 			        // convert mouse coordinates to canvas coordinates
@@ -135,16 +219,22 @@
 			                    // convert mouse coordinates to canvas coordinates
 			                    let x1 = (e.clientX - bb1.left) * (this.width / bb1.width);
 			                    let y1 = (e.clientY - bb1.top) * (this.height / bb1.height);
-			                    let obj = Object.create(Shape); // create new obj 
-			                    // with adapted properties
-			                    obj.init(mycv2, x1, y1, 
+			                    let obj;
+			                    if (shapes[i].type === "rect") {
+			                    	obj = Object.create(Shape);
+			                    	obj.init(mycv2, x1, y1, 
 			                                shapes[i].width, shapes[i].height,
 			                                shapes[i].color);
-			                    othershapes.push(obj);
+			                    	isOverlapping(obj);	
+			                    } else {
+			                    	obj = Object.create(circle);
+			                    	obj.init(mycv2, x1, y1, 
+			                                shapes[i].radius, shapes[i].Start, shapes[i].End, shapes[i].sandt,
+			                                shapes[i].color);
+			                    	isOverlapping(obj);
+			                    }
 			                    repeater(mycv2, othershapes);
 			                    mycv2.canvas.removeEventListener('click', placeInRoom);
-			                    mycv.canvas.addEventListener('click', hittest);
-			                    mycv.canvas.removeEventListener('click', hittest);
 			                });
 			        } else {
 			            // window.alert("nohit: "+x+","+y);
